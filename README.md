@@ -40,3 +40,9 @@ Verify the proof using the verification key and public inputs:
 > arkworks-bridge verify-proof --inputs test/resources/prog-inputs.jsonl --proof proof/proof --verifying-key proof/vk                                       
 ```
 
+
+## Ethereum Compatibility
+
+The commands `create-trusted-setup` and `create-proof` accept an argument `--ethereum` which will serialize the verification key (respectively proof) to json. There is also a command `generate-contract`, which will generate a verifying contract with the verification key baked in.
+
+NOTE: pretty much all frameworks serialize elements of the field of definition for `BN128` as `(real, imaginary)`, and we follow this convention. Naturally Etheruem assumes the opposite encoding, so you should switch the order when actually using the serialized values with any ethereum contracts.
