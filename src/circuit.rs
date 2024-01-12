@@ -6,6 +6,7 @@ use ark_ff::fields::Field;
 use ark_relations::r1cs::{
     ConstraintSynthesizer, ConstraintSystemRef, LinearCombination, SynthesisError, Variable,
 };
+use log::error;
 
 #[derive(Clone, Debug)]
 pub struct Circuit<E: Pairing> {
@@ -25,7 +26,13 @@ impl<E: Pairing> ConstraintSynthesizer<E::ScalarField> for Circuit<E> {
             let var = cs.new_input_variable(|| {
                 Ok(match &self.witness {
                     None => E::ScalarField::ONE,
-                    Some(witness) => witness.input_variables.get(&v).unwrap().clone(),
+                    Some(witness) => match witness.input_variables.get(&v) {
+                        None => {
+                            error!("Missing assignment for input variable {}", v);
+                            return Err(SynthesisError::AssignmentMissing);
+                        }
+                        Some(value) => *value,
+                    },
                 })
             })?;
             input_mapping.insert(v, var);
@@ -35,7 +42,13 @@ impl<E: Pairing> ConstraintSynthesizer<E::ScalarField> for Circuit<E> {
             let var = cs.new_witness_variable(|| {
                 Ok(match &self.witness {
                     None => E::ScalarField::ONE,
-                    Some(witness) => witness.witness_variables.get(&v).unwrap().clone(),
+                    Some(witness) => match witness.witness_variables.get(&v) {
+                        None => {
+                            error!("Missing assignment for witness variable {}", v);
+                            return Err(SynthesisError::AssignmentMissing);
+                        }
+                        Some(value) => *value,
+                    },
                 })
             })?;
             witness_mapping.insert(v, var);

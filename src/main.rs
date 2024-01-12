@@ -91,6 +91,11 @@ enum Command {
         /// Generate an eth-compatible proof and serialize as json
         #[structopt(short, long)]
         ethereum: bool,
+
+        /// Validate the proving key before use
+        /// WARNING: This is a very expensive operation and should only be used for debugging
+        #[structopt(short, long)]
+        validate_proving_key: bool,
     },
     /// Verify a proof given a verifying key, proof, and inputs
     VerifyProof {
@@ -154,11 +159,14 @@ fn create_trusted_setup(
             )
         })?;
 
-    info!("Serializing proving key to file {:}", pk_output.display());
+    info!(
+        "Serializing compressed proving key to file {:}",
+        pk_output.display()
+    );
 
     // Serialize the proving key to the output file
     let mut file = File::create(pk_output)?;
-    setup.0.serialize_uncompressed(&mut file).map_err(|e| {
+    setup.0.serialize_compressed(&mut file).map_err(|e| {
         io::Error::new(
             io::ErrorKind::Other,
             format!("Failed to serialize proving key: {}", e),
@@ -166,13 +174,13 @@ fn create_trusted_setup(
     })?;
 
     info!(
-        "Serializing verification key to file {:}",
+        "Serializing compressed verification key to file {:}",
         vk_output.display()
     );
 
     // Serialize the verifying key to the output file
     let mut file = File::create(vk_output.clone())?;
-    setup.1.serialize_uncompressed(&mut file).map_err(|e| {
+    setup.1.serialize_compressed(&mut file).map_err(|e| {
         io::Error::new(
             io::ErrorKind::Other,
             format!("Failed to serialize verifying key: {}", e),
@@ -204,14 +212,26 @@ fn create_proof(
     r1cs: PathBuf,
     mut output: PathBuf,
     ethereum: bool,
+    validate_proving_key: bool,
 ) -> io::Result<()> {
     let file = File::open(proving_key.clone())?;
     let mut reader = BufReader::new(file);
 
-    debug!("Loading proving key from file {:}", proving_key.display());
+    let validation_flag = if validate_proving_key {
+        debug!("Validating proving key on load");
+        ark_serialize::Validate::Yes
+    } else {
+        debug!("Skipping validation of proving key on load");
+        ark_serialize::Validate::No
+    };
+
+    debug!(
+        "Loading compressed proving key from file {:}",
+        proving_key.display()
+    );
 
     let proving_key =
-        <Groth16<Bn254> as ark_crypto_primitives::snark::SNARK<ark_bn254::Fr>>::ProvingKey::deserialize_uncompressed(&mut reader).map_err(|e| {
+        <Groth16<Bn254> as ark_crypto_primitives::snark::SNARK<ark_bn254::Fr>>::ProvingKey::deserialize_with_mode(&mut reader, ark_serialize::Compress::Yes, validation_flag).map_err(|e| {
             io::Error::new(
                 io::ErrorKind::Other,
                 format!("Failed to deserialize proving key: {}", e),
@@ -247,10 +267,10 @@ fn create_proof(
             )
         })?;
 
-    info!("Serializing proof to file {:}", output.display());
+    info!("Serializing compressed proof to file {:}", output.display());
 
     let mut file = File::create(output.clone())?;
-    proof.serialize_uncompressed(&mut file).map_err(|e| {
+    proof.serialize_compressed(&mut file).map_err(|e| {
         io::Error::new(
             io::ErrorKind::Other,
             format!("Failed to serialize proof: {}", e),
@@ -286,7 +306,7 @@ fn verify_proof(
     let mut reader = BufReader::new(file);
 
     debug!(
-        "Loading verifying key from file {:}",
+        "Loading compressed verifying key from file {:}",
         verifying_key.display()
     );
 
@@ -310,7 +330,7 @@ fn verify_proof(
             ark_bn254::Fr,
         >>::VerifyingKey::from(eth_vk))
     } else {
-        <Groth16<Bn254> as ark_crypto_primitives::snark::SNARK<ark_bn254::Fr>>::VerifyingKey::deserialize_uncompressed(&mut reader).map_err(|e| {
+        <Groth16<Bn254> as ark_crypto_primitives::snark::SNARK<ark_bn254::Fr>>::VerifyingKey::deserialize_compressed(&mut reader).map_err(|e| {
             io::Error::new(
                 io::ErrorKind::Other,
                 format!("Failed to deserialize verifying key: {}", e),
@@ -321,10 +341,10 @@ fn verify_proof(
     let file = File::open(proof.clone())?;
     let mut reader = BufReader::new(file);
 
-    debug!("Loading proof from file {:}", proof.display());
+    debug!("Loading compressed proof from file {:}", proof.display());
 
     let proof =
-        <Groth16<Bn254> as ark_crypto_primitives::snark::SNARK<ark_bn254::Fr>>::Proof::deserialize_uncompressed(&mut reader).map_err(|e| {
+        <Groth16<Bn254> as ark_crypto_primitives::snark::SNARK<ark_bn254::Fr>>::Proof::deserialize_compressed(&mut reader).map_err(|e| {
             io::Error::new(
                 io::ErrorKind::Other,
                 format!("Failed to deserialize proof: {}", e),
@@ -427,7 +447,7 @@ fn generate_contract(verifying_key: PathBuf, contract: PathBuf, inputs: PathBuf)
     );
 
     let verifying_key =
-        <Groth16<Bn254> as ark_crypto_primitives::snark::SNARK<ark_bn254::Fr>>::VerifyingKey::deserialize_uncompressed(&mut reader).map_err(|e| {
+        <Groth16<Bn254> as ark_crypto_primitives::snark::SNARK<ark_bn254::Fr>>::VerifyingKey::deserialize_compressed(&mut reader).map_err(|e| {
             io::Error::new(
                 io::ErrorKind::Other,
                 format!("Failed to deserialize verifying key: {}", e),
@@ -489,8 +509,16 @@ fn main() -> io::Result<()> {
             r1cs,
             proof,
             ethereum,
+            validate_proving_key,
         } => {
-            create_proof(proving_key, witness, r1cs, proof, ethereum)?;
+            create_proof(
+                proving_key,
+                witness,
+                r1cs,
+                proof,
+                ethereum,
+                validate_proving_key,
+            )?;
         }
         Command::VerifyProof {
             verifying_key,
@@ -529,7 +557,7 @@ mod tests {
 
         // ethereum is set to false because the tests aren't picking up the template for some reason?
         create_trusted_setup(r1cs.clone(), pk.clone(), vk.clone(), false).unwrap();
-        create_proof(pk.clone(), witness, r1cs, proof.clone(), true).unwrap();
+        create_proof(pk.clone(), witness, r1cs, proof.clone(), true, false).unwrap();
         assert!(verify_proof(vk.clone(), proof.clone(), inputs, false).unwrap());
 
         // Clean up
