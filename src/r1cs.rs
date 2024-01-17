@@ -50,8 +50,9 @@ pub struct R1CS<E: Pairing> {
 
 impl<E: Pairing> From<R1CSFile<E>> for R1CS<E> {
     fn from(file: R1CSFile<E>) -> Self {
-        // The 0 variable is always the constant 1
-        let var_set: HashSet<usize> = (1..file.header.n_variables).collect();
+        // The constant "variable" set to 1 has index 0 and is not counted
+        // in the number of variables
+        let var_set: HashSet<usize> = (1..file.header.n_variables + 1).collect();
         let input_vars_set: HashSet<usize> =
             file.header.input_variables.clone().into_iter().collect();
 
