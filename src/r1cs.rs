@@ -1,4 +1,4 @@
-use crate::header::Header;
+use crate::header::ConstraintHeader;
 use ark_bn254::Bn254;
 use ark_ec::pairing::Pairing;
 use serde::{Deserialize, Deserializer};
@@ -37,7 +37,7 @@ pub struct R1C<E: Pairing> {
 }
 
 pub struct R1CSFile<E: Pairing> {
-    pub header: Header,
+    pub header: ConstraintHeader,
     pub constraints: Vec<R1C<E>>,
 }
 
@@ -50,8 +50,9 @@ pub struct R1CS<E: Pairing> {
 
 impl<E: Pairing> From<R1CSFile<E>> for R1CS<E> {
     fn from(file: R1CSFile<E>) -> Self {
-        // The 0 variable is always the constant 1
-        let var_set: HashSet<usize> = (1..file.header.n_variables).collect();
+        // The constant "variable" set to 1 has index 0 and is not counted
+        // in the number of variables
+        let var_set: HashSet<usize> = (1..file.header.n_variables + 1).collect();
         let input_vars_set: HashSet<usize> =
             file.header.input_variables.clone().into_iter().collect();
 
@@ -78,7 +79,8 @@ pub fn parse_r1cs_file(reader: BufReader<File>) -> io::Result<R1CSFile<Bn254>> {
         io::ErrorKind::NotFound,
         "Header line not found",
     ))??;
-    let header: Header = serde_json::from_str(&header_line).expect("Error parsing header");
+    let header: ConstraintHeader =
+        serde_json::from_str(&header_line).expect("Error parsing header");
 
     // Read and parse constraints
     let constraints: Vec<R1C<Bn254>> = lines
