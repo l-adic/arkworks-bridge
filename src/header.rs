@@ -13,7 +13,7 @@ where
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Header {
+pub struct ConstraintHeader {
     pub extension_degree: usize,
     #[serde(deserialize_with = "deserialize_biguint")]
     pub field_characteristic: BigUint,
@@ -21,4 +21,11 @@ pub struct Header {
     pub n_constraints: usize,
     pub n_variables: usize,
     pub output_variables: Vec<usize>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct WitnessHeader {
+    pub input_variables: Vec<usize>,
+    pub output_variables: Vec<usize>,
+    pub n_variables: usize,
 }

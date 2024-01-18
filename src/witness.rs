@@ -1,4 +1,4 @@
-use crate::header::Header;
+use crate::header::WitnessHeader;
 use ark_bn254::Bn254;
 use ark_ec::pairing::Pairing;
 use serde::de::IntoDeserializer;
@@ -27,7 +27,7 @@ where
 
 #[derive(Debug)]
 pub struct WitnessFile<E: Pairing> {
-    pub header: Header,
+    pub header: WitnessHeader,
     pub witness: Vec<(usize, E::ScalarField)>,
 }
 
@@ -65,7 +65,7 @@ pub fn parse_witness_file(reader: BufReader<File>) -> io::Result<WitnessFile<Bn2
         io::ErrorKind::NotFound,
         "Witness header line not found",
     ))??;
-    let witness_header: Header =
+    let witness_header: WitnessHeader =
         serde_json::from_str(&header_line).expect("Error parsing witness header");
 
     let mut witness_data = Vec::new();

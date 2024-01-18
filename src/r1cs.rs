@@ -1,4 +1,4 @@
-use crate::header::Header;
+use crate::header::ConstraintHeader;
 use ark_bn254::Bn254;
 use ark_ec::pairing::Pairing;
 use serde::{Deserialize, Deserializer};
@@ -37,7 +37,7 @@ pub struct R1C<E: Pairing> {
 }
 
 pub struct R1CSFile<E: Pairing> {
-    pub header: Header,
+    pub header: ConstraintHeader,
     pub constraints: Vec<R1C<E>>,
 }
 
@@ -79,7 +79,8 @@ pub fn parse_r1cs_file(reader: BufReader<File>) -> io::Result<R1CSFile<Bn254>> {
         io::ErrorKind::NotFound,
         "Header line not found",
     ))??;
-    let header: Header = serde_json::from_str(&header_line).expect("Error parsing header");
+    let header: ConstraintHeader =
+        serde_json::from_str(&header_line).expect("Error parsing header");
 
     // Read and parse constraints
     let constraints: Vec<R1C<Bn254>> = lines
