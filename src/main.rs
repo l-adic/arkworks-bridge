@@ -392,6 +392,7 @@ fn run_r1cs(r1cs: PathBuf, witness: PathBuf, inputs: PathBuf) -> io::Result<()> 
     let witness: Witness<Bn254> = parse_witness_file(reader)?.into();
 
     let file = File::open(inputs.clone())?;
+
     let reader = BufReader::new(file);
 
     debug!("Loading inputs file from {:}", inputs.display());
@@ -553,7 +554,7 @@ mod tests {
         let pk = PathBuf::from("test/resources/prog-pk");
         let vk = PathBuf::from("test/resources/prog-vk");
         let proof = PathBuf::from("test/resources/prog-proof");
-        let inputs = PathBuf::from("test/resources/prog-inputs.jsonl");
+        let inputs = PathBuf::from("test/resources/prog-assignments.jsonl");
 
         // ethereum is set to false because the tests aren't picking up the template for some reason?
         create_trusted_setup(r1cs.clone(), pk.clone(), vk.clone(), false).unwrap();

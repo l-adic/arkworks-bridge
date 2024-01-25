@@ -1,28 +1,40 @@
-use crate::witness::deserialize_coeff_var_tuple;
-use ark_bn254::Bn254;
 use ark_ec::pairing::Pairing;
-use serde::de::IntoDeserializer;
-use serde_json::Value;
+use serde::Deserialize;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
+use std::str::FromStr; // Import IntoDeserializer trait
+
+#[derive(Deserialize)]
+#[serde(tag = "tag", rename_all = "lowercase")]
+pub struct InputJson {
+    tag: String,
+    var: usize,
+    value: String,
+}
 
 #[derive(Debug)]
 pub struct Inputs<E: Pairing> {
     pub inputs: Vec<(usize, E::ScalarField)>,
 }
 
-pub fn parse_inputs_file(reader: BufReader<File>) -> io::Result<Inputs<Bn254>> {
+pub fn parse_inputs_file<E: Pairing>(reader: BufReader<File>) -> io::Result<Inputs<E>> {
     let lines = reader.lines();
 
     let mut inputs_data = Vec::new();
     for line in lines {
         let line = line.expect("Error reading line from inputs file");
-        let json = serde_json::from_str::<Value>(&line).expect("Error parsing JSON to Value");
-        let deserializer = json.into_deserializer();
-        let parsed_data = deserialize_coeff_var_tuple::<_, Bn254>(deserializer)
-            .expect("Error in custom deserialization");
-        inputs_data.push(parsed_data);
+        let input = serde_json::from_str::<InputJson>(&line).expect("Error parsing JSON to Input");
+        match input {
+            InputJson { tag, var, value } => {
+                if tag == "public" || tag == "output" {
+                    let val = E::ScalarField::from_str(&value).map_err(|_| {
+                        io::Error::new(io::ErrorKind::Other, "Error parsing field element")
+                    })?;
+                    inputs_data.push((var, val));
+                }
+            }
+        }
     }
 
     Ok(Inputs {
