@@ -392,6 +392,7 @@ fn run_r1cs(r1cs: PathBuf, witness: PathBuf, inputs: PathBuf) -> io::Result<()> 
     let witness: Witness<Bn254> = parse_witness_file(reader)?.into();
 
     let file = File::open(inputs.clone())?;
+
     let reader = BufReader::new(file);
 
     debug!("Loading inputs file from {:}", inputs.display());
@@ -548,12 +549,12 @@ mod tests {
 
     #[test]
     fn test_end_to_end() {
-        let r1cs = PathBuf::from("test/resources/prog-r1cs.jsonl");
-        let witness = PathBuf::from("test/resources/prog-witness.jsonl");
-        let pk = PathBuf::from("test/resources/prog-pk");
-        let vk = PathBuf::from("test/resources/prog-vk");
-        let proof = PathBuf::from("test/resources/prog-proof");
-        let inputs = PathBuf::from("test/resources/prog-assignments.jsonl");
+        let r1cs = PathBuf::from("test/resources/sudoku-r1cs.jsonl");
+        let witness = PathBuf::from("test/resources/sudoku-witness.jsonl");
+        let pk = PathBuf::from("test/resources/sudoku-pk");
+        let vk = PathBuf::from("test/resources/sudoku-vk");
+        let proof = PathBuf::from("test/resources/sudoku-proof");
+        let inputs = PathBuf::from("test/resources/sudoku-assignments.jsonl");
 
         // ethereum is set to false because the tests aren't picking up the template for some reason?
         create_trusted_setup(r1cs.clone(), pk.clone(), vk.clone(), false).unwrap();

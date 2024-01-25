@@ -8,6 +8,7 @@ use std::str::FromStr; // Import IntoDeserializer trait
 #[derive(Deserialize)]
 #[serde(tag = "tag", rename_all = "lowercase")]
 pub struct InputJson {
+    tag: String,
     var: usize,
     value: String,
 }
@@ -25,11 +26,13 @@ pub fn parse_inputs_file<E: Pairing>(reader: BufReader<File>) -> io::Result<Inpu
         let line = line.expect("Error reading line from inputs file");
         let input = serde_json::from_str::<InputJson>(&line).expect("Error parsing JSON to Input");
         match input {
-            InputJson { var, value } => {
-                let val = E::ScalarField::from_str(&value).map_err(|_| {
-                    io::Error::new(io::ErrorKind::Other, "Error parsing field element")
-                })?;
-                inputs_data.push((var, val));
+            InputJson { tag, var, value } => {
+                if tag == "public" || tag == "output" {
+                    let val = E::ScalarField::from_str(&value).map_err(|_| {
+                        io::Error::new(io::ErrorKind::Other, "Error parsing field element")
+                    })?;
+                    inputs_data.push((var, val));
+                }
             }
         }
     }

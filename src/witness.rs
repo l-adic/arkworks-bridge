@@ -42,8 +42,11 @@ impl<E: Pairing> From<WitnessFile<E>> for Witness<E> {
         let mut input_variables: HashMap<usize, E::ScalarField> = HashMap::new();
         let mut witness_variables: HashMap<usize, E::ScalarField> = HashMap::new();
 
+        // input (i.e. public) variables include the public inputs and (public) output variables
         file.witness.into_iter().for_each(|(index, value)| {
-            if file.header.input_variables.contains(&index) {
+            if file.header.input_variables.contains(&index)
+                || file.header.output_variables.contains(&index)
+            {
                 input_variables.insert(index, value);
             } else if index != 0 {
                 witness_variables.insert(index, value);
