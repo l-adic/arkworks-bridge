@@ -553,7 +553,7 @@ mod tests {
         let pk = PathBuf::from("test/resources/prog-pk");
         let vk = PathBuf::from("test/resources/prog-vk");
         let proof = PathBuf::from("test/resources/prog-proof");
-        let inputs = PathBuf::from("test/resources/prog-inputs.jsonl");
+        let inputs = PathBuf::from("test/resources/prog-assignments.jsonl");
 
         // ethereum is set to false because the tests aren't picking up the template for some reason?
         create_trusted_setup(r1cs.clone(), pk.clone(), vk.clone(), false).unwrap();
